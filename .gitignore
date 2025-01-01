@@ -1,0 +1,8 @@
+# igonore node_mdules folder
+node_modules/
+# ignore all files or directories named logs
+**/logs
+# ignore all files with .log extension in logs folder
+**/logs/*.log
+# ignore all files with .log extension under any sub folders of logs folder
+logs/**/*.log
