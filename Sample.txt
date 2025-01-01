@@ -1,1 +1,2 @@
-first line text
+first line text appended
+second line text
