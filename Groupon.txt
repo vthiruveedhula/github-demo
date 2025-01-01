@@ -20,6 +20,7 @@ public class GrouponTestDemo {
 
     static WebDriver driver;
     static WebDriverWait explicitWait;
+	
     static String appURL = "https://www.groupon.com/";
 
     public static void main(String[] args) throws InterruptedException {
