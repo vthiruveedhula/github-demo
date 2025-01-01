@@ -1,0 +1,170 @@
+package org.tvk;
+
+import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+public class GrouponTestDemo {
+
+    static WebDriver driver;
+    static WebDriverWait explicitWait;
+    static String appURL = "https://www.groupon.com/";
+
+    public static void main(String[] args) throws InterruptedException {
+        initiateDriver();
+        navigateToHomePage(appURL);
+
+        //get the menu list
+        List<String> mainMenuNameList = getMainMenus();
+        System.out.println("Main Menu List Count : " + mainMenuNameList.size());
+        mainMenuNameList.forEach(System.out::println);
+
+        //validate breadcrumb for each main menu
+        for(String mainMenuName : mainMenuNameList){
+            if (!mainMenuName.contains("Coupons")) {
+                WebElement mainMenuElement = getMainMenuElement(mainMenuName);
+                clickOnMenu(mainMenuElement);
+                System.out.println("\nMain Menu Name: " + mainMenuName);
+
+                List<String> breadcrumbsText = getBreadcrumbs();
+
+                String breadcrumbsTxt = getBreadcrumbsText(breadcrumbsText);
+                System.out.println("\nMain Menu Breadcrumbs : " + breadcrumbsTxt);
+                System.out.println("Main Menu Name : " + mainMenuName);
+
+                boolean isBreadcrumbContainsMenuName = isBreadcrumbContainsMenuName(breadcrumbsText, mainMenuName);
+                System.out.println("isBreadcrumbContainsMenuName : " + isBreadcrumbContainsMenuName);
+            }
+        }
+
+        //For each main menu get the sub menu list and perform validation for each sub menu
+        for(String mainMenuName : mainMenuNameList) {
+
+            System.out.println("\nFor Sub Menu, Main Menu Name : " + mainMenuName);
+            //get the submenu name list for a given main menu
+            List<String> subMenuNameList = getSubMenus(mainMenuName);
+            assert subMenuNameList != null;
+            subMenuNameList.forEach(System.out::println);
+
+            //validate breadcrumb for each sub menu under the main menu
+            for (String subMenuName : subMenuNameList) {
+
+                //mouse hover on the main menu to navigate through sub menu
+                Actions actions = new Actions(driver, Duration.ofSeconds(10));
+                WebElement mainMenuElement = getMainMenuElement(mainMenuName);
+                actions.moveToElement(mainMenuElement).build().perform();
+
+                WebElement subMenuElement = getSubMenuElement(subMenuName);
+                clickOnMenu(subMenuElement);
+                List<String> breadcrumbsText = getBreadcrumbs();
+
+                String breadcrumbsTxt = getBreadcrumbsText(breadcrumbsText);
+                System.out.println("\nSub Menu Breadcrumbs : " + breadcrumbsTxt);
+                System.out.println("Sub Menu Name : " + subMenuName);
+
+                boolean isBreadcrumbContainsMenuName = isBreadcrumbContainsMenuName(breadcrumbsText, subMenuName);
+                System.out.println("isBreadcrumbContainsMenuName : " + isBreadcrumbContainsMenuName);
+            }
+        }
+
+        driver.wait(3000L);
+
+        closeDriver();
+    }
+
+    public static String getBreadcrumbsText(List<String> breadcrumbsText){
+        return
+        breadcrumbsText
+                .stream()
+                .reduce("",
+                        (result,
+                         element) -> {
+                            return result.length() > 0 ? result.concat(" > ").concat(element) : result.concat(element);});
+    }
+
+    public static void closeDriver() {
+        driver.quit();
+    }
+
+    public static void initiateDriver() {
+        driver = new ChromeDriver();
+        driver.manage().window().maximize();
+        driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(10L));
+        explicitWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        System.out.println("WebDriver initiated ...");
+    }
+
+    public static void navigateToHomePage(String url) {
+        driver.get(url);
+        System.out.println("Navigated to HomePage");
+    }
+
+    public static List<String> getMainMenus(){
+        List<WebElement> mainMenuElements =
+                driver.findElements(By.xpath("//a[@class='block px-2 py-4 md:px-3 lg:px-4']//div[@class='flex items-center gap-2 bg-white']"));
+        return mainMenuElements.stream().map(WebElement::getText).toList();
+    }
+
+    public static List<String> getSubMenus(String mainMenuName){
+
+        try{
+            WebElement grouponLogo = driver.findElement(By.xpath("//a[@id='ls-groupon-logo']"));
+            ((JavascriptExecutor) driver).executeScript("arguments[0].click();", grouponLogo);
+
+        }catch (Exception e){
+            System.out.println("No submenu items found...");
+        }
+
+        Actions actions = new Actions(driver, Duration.ofSeconds(10));
+        WebElement mainMenuElement = getMainMenuElement(mainMenuName);
+        actions.moveToElement(mainMenuElement).build().perform();
+
+        try {
+            driver.findElement(By.xpath("//div[@data-testid='flyout-item']"));
+        } catch (Exception e) {
+            System.out.println("No submenu items found...");
+            return null;
+        }
+
+        List<WebElement> subMenuElements =
+                driver.findElements(By.xpath("//div[@class='pt-3']//a"));
+        return subMenuElements.stream().map(WebElement::getText).toList();
+    }
+
+    public static WebElement getMainMenuElement(String mainMenuName) {
+        System.out.println("Inside getMainMenuElement : " + mainMenuName);
+        return explicitWait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//a[@class='block px-2 py-4 md:px-3 lg:px-4']//div[@class='flex items-center gap-2 bg-white'][normalize-space()='" + mainMenuName + "']")));
+    }
+
+    private static WebElement getSubMenuElement(String subMenuName) {
+        System.out.println("Inside getSubMenuElement : " + subMenuName);
+        return explicitWait.until(ExpectedConditions.presenceOfElementLocated(By.xpath("//div[@class='pt-3']//a[normalize-space()='" + subMenuName + "']")));
+    }
+
+    public static void clickOnMenu(WebElement element) {
+        element.click();
+        System.out.println("Clicked on Menu : " + element.getText());
+    }
+
+    public static List<String> getBreadcrumbs() {
+        By breadcrumbsLocator = By.xpath("//div[@class='flex flex-row items-center gap-1']");
+        List<WebElement> elements = driver.findElements(breadcrumbsLocator);
+        return elements.stream().map(WebElement::getText).collect(Collectors.toList());
+    }
+
+    public static boolean isBreadcrumbContainsMenuName(List<String> breadcrumbsText, String menuText) {
+        return breadcrumbsText.contains(menuText);
+    }
+}
